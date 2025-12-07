@@ -127,5 +127,70 @@
   }
   body {
     @apply font-sans antialiased bg-background text-foreground;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+}
+
+@layer utilities {
+  .touch-manipulation {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top, 0);
+  }
+
+  .min-touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  @media (hover: none) and (pointer: coarse) {
+    .hover-only {
+      display: none !important;
+    }
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .touch-only {
+      display: none !important;
+    }
+  }
+}
+
+@layer components {
+  .mobile-card {
+    @apply rounded-lg border bg-card p-4;
+  }
+
+  .mobile-button {
+    @apply min-h-[48px] px-6 text-base font-medium touch-manipulation;
+  }
+
+  .mobile-input {
+    @apply min-h-[48px] px-4 text-base touch-manipulation;
+  }
+
+  .mobile-list-item {
+    @apply flex items-center gap-3 min-h-[56px] px-4 py-3 touch-manipulation;
+  }
+
+  .floating-button {
+    @apply fixed z-50 shadow-lg touch-manipulation transition-transform active:scale-95;
   }
 }

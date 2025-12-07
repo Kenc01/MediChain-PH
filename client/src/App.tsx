@@ -4,6 +4,8 @@ import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
+import BottomNav from "@/components/layout/BottomNav";
+import EmergencyFAB from "@/components/layout/EmergencyFAB";
 import Home from "@/pages/Home";
 import PatientPortal from "@/pages/PatientPortal";
 import DoctorPortal from "@/pages/DoctorPortal";
@@ -20,7 +22,7 @@ function App() {
       <Router>
         <div className="min-h-screen bg-background font-sans antialiased flex flex-col">
           <Header />
-          <main className="flex-1">
+          <main className="flex-1 pb-16 md:pb-0">
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/login" element={<Login />} />
@@ -34,6 +36,8 @@ function App() {
             </Routes>
           </main>
           <Footer />
+          <BottomNav />
+          <EmergencyFAB />
           <Toaster />
         </div>
       </Router>

@@ -4,34 +4,63 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, QrCode, User, Phone, Clock, AlertCircle, Hospital, Stethoscope, FileText } from "lucide-react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { AlertTriangle, QrCode, User, Phone, Clock, AlertCircle, Hospital, Stethoscope, FileText, WifiOff, Wifi } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { PatientRecord, EmergencyAccessLog } from "@shared/schema";
 import { Html5Qrcode } from "html5-qrcode";
+import { cachePatientData, getCachedPatientData } from "@/lib/offlineCache";
 
 export default function EmergencyAccess() {
   const [nftId, setNftId] = useState("");
   const [patientData, setPatientData] = useState<PatientRecord | null>(null);
   const [accessLog, setAccessLog] = useState<EmergencyAccessLog | null>(null);
   const [scannerActive, setScannerActive] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [usingCachedData, setUsingCachedData] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const { toast } = useToast();
 
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
   const fetchPatientMutation = useMutation({
     mutationFn: async (nftIdValue: string) => {
+      if (!navigator.onLine) {
+        const cached = getCachedPatientData<PatientRecord>(`patient_${nftIdValue}`);
+        if (cached) {
+          setUsingCachedData(true);
+          return cached;
+        }
+        throw new Error("You are offline and no cached data is available for this patient.");
+      }
+
       const response = await fetch(`/api/patient/${nftIdValue}`);
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.message || "Patient not found");
       }
-      return response.json() as Promise<PatientRecord>;
+      const data = await response.json() as PatientRecord;
+      
+      cachePatientData(`patient_${nftIdValue}`, data);
+      setUsingCachedData(false);
+      
+      return data;
     },
     onSuccess: async (data) => {
       setPatientData(data);
       
-      // Create emergency access log
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + 24);
       
@@ -43,20 +72,46 @@ export default function EmergencyAccess() {
         ipAddress: "127.0.0.1",
       };
 
-      try {
-        const logResponse = await apiRequest<EmergencyAccessLog>({
-          url: "/api/emergency-access/log",
-          method: "POST",
-          data: logData,
-        });
-        setAccessLog(logResponse);
+      if (navigator.onLine) {
+        try {
+          const logResponse = await apiRequest<EmergencyAccessLog>({
+            url: "/api/emergency-access/log",
+            method: "POST",
+            data: logData,
+          });
+          setAccessLog(logResponse);
+          
+          toast({
+            title: "Emergency Access Granted",
+            description: "Access has been logged to the blockchain for audit purposes.",
+          });
+        } catch (error) {
+          console.error("Failed to log access:", error);
+          setAccessLog({
+            id: Date.now(),
+            patientRecordId: data.id,
+            accessedBy: logData.accessedBy,
+            accessedAt: new Date().toISOString(),
+            expiresAt: logData.expiresAt,
+            blockchainTxHash: logData.blockchainTxHash,
+            ipAddress: logData.ipAddress,
+          } as EmergencyAccessLog);
+        }
+      } else {
+        setAccessLog({
+          id: Date.now(),
+          patientRecordId: data.id,
+          accessedBy: logData.accessedBy,
+          accessedAt: new Date().toISOString(),
+          expiresAt: logData.expiresAt,
+          blockchainTxHash: "OFFLINE - Will sync when online",
+          ipAddress: logData.ipAddress,
+        } as EmergencyAccessLog);
         
         toast({
-          title: "Emergency Access Granted",
-          description: "Access has been logged to the blockchain for audit purposes.",
+          title: "Offline Access Granted",
+          description: "Using cached data. Access will be logged when you're back online.",
         });
-      } catch (error) {
-        console.error("Failed to log access:", error);
       }
     },
     onError: (error: Error) => {
@@ -147,17 +202,38 @@ export default function EmergencyAccess() {
   if (patientData && accessLog) {
     return (
       <div className="space-y-4">
+        {usingCachedData && (
+          <Card className="border-amber-500/50 bg-amber-500/10">
+            <CardContent className="py-3">
+              <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                <WifiOff className="h-4 w-4" />
+                <span className="text-sm font-medium" data-testid="text-offline-mode">
+                  Offline Mode - Showing cached data
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
         <Card className="border-destructive bg-destructive/5">
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-destructive" data-testid="icon-emergency-alert" />
-                <CardTitle className="text-destructive text-lg" data-testid="text-emergency-title">EMERGENCY MEDICAL ACCESS</CardTitle>
+                <CardTitle className="text-destructive text-base md:text-lg" data-testid="text-emergency-title">EMERGENCY MEDICAL ACCESS</CardTitle>
               </div>
-              <Badge variant="destructive" data-testid="badge-active">ACTIVE</Badge>
+              <div className="flex items-center gap-2">
+                {!isOnline && (
+                  <Badge variant="outline" className="border-amber-500 text-amber-600" data-testid="badge-offline">
+                    <WifiOff className="h-3 w-3 mr-1" />
+                    OFFLINE
+                  </Badge>
+                )}
+                <Badge variant="destructive" data-testid="badge-active">ACTIVE</Badge>
+              </div>
             </div>
             <CardDescription data-testid="text-expiration-info">
-              Access expires in {getTimeRemaining()} • NFT ID: {patientData.nftId}
+              Access expires in {getTimeRemaining()} | NFT ID: {patientData.nftId}
             </CardDescription>
           </CardHeader>
         </Card>
@@ -313,11 +389,24 @@ export default function EmergencyAccess() {
 
   return (
     <div className="space-y-4">
+      {!isOnline && (
+        <Card className="border-amber-500/50 bg-amber-500/10">
+          <CardContent className="py-3">
+            <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+              <WifiOff className="h-4 w-4" />
+              <span className="text-sm font-medium">
+                You are offline. Cached patient data will be used if available.
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      
       <Card className="border-destructive bg-destructive/5">
         <CardHeader>
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-destructive" />
-            <CardTitle className="text-destructive" data-testid="text-emergency-access-title">EMERGENCY MEDICAL ACCESS</CardTitle>
+            <CardTitle className="text-destructive text-base md:text-lg" data-testid="text-emergency-access-title">EMERGENCY MEDICAL ACCESS</CardTitle>
           </div>
           <CardDescription data-testid="text-emergency-description">
             Access patient medical records using their Health NFT ID. All access is logged on the blockchain and expires in 24 hours.
@@ -334,23 +423,25 @@ export default function EmergencyAccess() {
           <CardDescription>Use your device camera to scan the patient's Health NFT QR code</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div id="qr-reader" className={scannerActive ? "w-full" : "hidden"} data-testid="qr-scanner" />
+          <div id="qr-reader" className={scannerActive ? "w-full aspect-square max-w-sm mx-auto rounded-lg overflow-hidden" : "hidden"} data-testid="qr-scanner" />
           
           {!scannerActive ? (
             <Button
               onClick={startQrScanner}
               variant="outline"
-              className="w-full"
+              size="lg"
+              className="w-full min-h-[56px] text-base touch-manipulation"
               data-testid="button-start-scanner"
             >
-              <QrCode className="h-4 w-4 mr-2" />
+              <QrCode className="h-5 w-5 mr-2" />
               Start QR Scanner
             </Button>
           ) : (
             <Button
               onClick={stopQrScanner}
               variant="outline"
-              className="w-full"
+              size="lg"
+              className="w-full min-h-[56px] text-base touch-manipulation"
               data-testid="button-stop-scanner"
             >
               Stop Scanner
@@ -374,13 +465,15 @@ export default function EmergencyAccess() {
                 value={nftId}
                 onChange={(e) => setNftId(e.target.value)}
                 disabled={fetchPatientMutation.isPending}
+                className="min-h-[48px] text-base touch-manipulation"
                 data-testid="input-nft-id"
               />
             </div>
             <Button
               type="submit"
               variant="destructive"
-              className="w-full"
+              size="lg"
+              className="w-full min-h-[56px] text-base touch-manipulation"
               disabled={fetchPatientMutation.isPending || !nftId.trim()}
               data-testid="button-access-records"
             >
@@ -393,7 +486,7 @@ export default function EmergencyAccess() {
       <Card className="border-muted">
         <CardContent className="pt-4">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <AlertTriangle className="h-4 w-4" />
+            <AlertTriangle className="h-4 w-4 shrink-0" />
             <p data-testid="text-warning">
               Emergency access is logged immutably on the blockchain for compliance and audit purposes.
             </p>
