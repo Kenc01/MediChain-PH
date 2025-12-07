@@ -53,13 +53,13 @@ export default function Home() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-8">
-              <Link to="/patient/register">
-                <Button size="xl" className="h-14 px-8 text-lg gap-2 shadow-xl shadow-primary/20 hover:shadow-primary/30 transition-all rounded-full">
+              <Link to="/patient">
+                <Button size="lg" className="h-14 px-8 text-lg gap-2 shadow-xl shadow-primary/20 hover:shadow-primary/30 transition-all rounded-full">
                   Get Your Health NFT <ArrowRight className="h-5 w-5" />
                 </Button>
               </Link>
-              <Link to="/hospital/login">
-                <Button variant="outline" size="xl" className="h-14 px-8 text-lg rounded-full border-2">
+              <Link to="/hospital">
+                <Button variant="outline" size="lg" className="h-14 px-8 text-lg rounded-full border-2">
                   Hospital Login
                 </Button>
               </Link>
