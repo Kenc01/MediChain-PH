@@ -1,0 +1,2 @@
+export const PATIENT_RECORD_CONTRACT_ADDRESS = "0x...";
+export const DATA_MARKETPLACE_CONTRACT_ADDRESS = "0x...";
