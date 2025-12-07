@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { 
   NavigationMenu, 
@@ -14,14 +14,25 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 import logo from "@assets/generated_images/minimalist_medical_blockchain_logo.png";
-import { Wallet, Menu, AlertTriangle, Home, User, Stethoscope, Building2, Store, Wifi, WifiOff } from "lucide-react";
+import { Menu, AlertTriangle, Home, User, Stethoscope, Building2, Store, Wifi, WifiOff, LogOut, Settings, Shield } from "lucide-react";
 
 export default function Header() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, isAuthenticated, logout, isLoading } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   useEffect(() => {
@@ -37,9 +48,20 @@ export default function Header() {
     };
   }, []);
 
-  const connectWallet = () => {
-    setWalletAddress("0x71C...9A21");
+  const handleLogout = async () => {
+    await logout();
+    navigate("/");
     setIsMenuOpen(false);
+  };
+
+  const getPortalPath = () => {
+    if (!user) return "/";
+    switch (user.role) {
+      case "patient": return "/patient";
+      case "doctor": return "/doctor";
+      case "hospital_admin": return "/hospital";
+      default: return "/";
+    }
   };
 
   const navItems = [
@@ -49,6 +71,24 @@ export default function Header() {
     { name: "Hospital Portal", path: "/hospital", icon: Building2 },
     { name: "Marketplace", path: "/marketplace", icon: Store },
   ];
+
+  const getUserInitials = () => {
+    if (!user) return "?";
+    if (user.firstName && user.lastName) {
+      return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
+    }
+    return user.email[0].toUpperCase();
+  };
+
+  const getRoleLabel = () => {
+    if (!user) return "";
+    switch (user.role) {
+      case "patient": return "Patient";
+      case "doctor": return "Doctor";
+      case "hospital_admin": return "Hospital Admin";
+      default: return "";
+    }
+  };
 
   return (
     <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
@@ -70,7 +110,6 @@ export default function Header() {
                       "bg-transparent",
                       location.pathname === item.path && "text-primary font-medium"
                     )}
-                    data-testid={`nav-desktop-${item.name.toLowerCase().replace(" ", "-")}`}
                   >
                     {item.name}
                   </Link>
@@ -80,39 +119,82 @@ export default function Header() {
           </NavigationMenu>
 
           <Link to="/emergency">
-            <Button variant="destructive" size="sm" className="gap-2" data-testid="button-emergency-desktop">
+            <Button variant="destructive" size="sm" className="gap-2">
               <AlertTriangle className="h-4 w-4" />
               Emergency
             </Button>
           </Link>
 
-          <Button 
-            variant={walletAddress ? "outline" : "default"} 
-            size="sm"
-            onClick={connectWallet}
-            className="gap-2 font-medium"
-            data-testid="button-wallet-desktop"
-          >
-            <Wallet className="h-4 w-4" />
-            {walletAddress ? walletAddress : "Connect Wallet"}
-          </Button>
+          {isLoading ? (
+            <div className="h-8 w-8 rounded-full bg-muted animate-pulse" />
+          ) : isAuthenticated ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-primary text-primary-foreground">
+                      {getUserInitials()}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="end" forceMount>
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">
+                      {user?.firstName} {user?.lastName}
+                    </p>
+                    <p className="text-xs leading-none text-muted-foreground">
+                      {user?.email}
+                    </p>
+                    <p className="text-xs text-primary">{getRoleLabel()}</p>
+                    {user?.status === "pending" && (
+                      <p className="text-xs text-amber-500">Pending Approval</p>
+                    )}
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate(getPortalPath())}>
+                  <User className="mr-2 h-4 w-4" />
+                  My Portal
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/settings")}>
+                  <Settings className="mr-2 h-4 w-4" />
+                  Settings
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/security")}>
+                  <Shield className="mr-2 h-4 w-4" />
+                  Security
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Log out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={() => navigate("/login")}>
+                Login
+              </Button>
+              <Button size="sm" onClick={() => navigate("/register")}>
+                Sign up
+              </Button>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-2 md:hidden">
           {!isOnline && (
-            <div className="flex items-center gap-1 text-amber-600 text-xs" data-testid="status-offline">
+            <div className="flex items-center gap-1 text-amber-600 text-xs">
               <WifiOff className="h-4 w-4" />
             </div>
           )}
           
           <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
             <SheetTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="touch-manipulation"
-                data-testid="button-menu-toggle"
-              >
+              <Button variant="ghost" size="icon" className="touch-manipulation">
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
@@ -125,6 +207,17 @@ export default function Header() {
               </SheetHeader>
               
               <div className="flex flex-col gap-2 mt-6">
+                {isAuthenticated && (
+                  <>
+                    <div className="px-4 py-3 bg-muted rounded-md">
+                      <p className="font-medium">{user?.firstName} {user?.lastName}</p>
+                      <p className="text-xs text-muted-foreground">{user?.email}</p>
+                      <p className="text-xs text-primary mt-1">{getRoleLabel()}</p>
+                    </div>
+                    <div className="border-t my-2" />
+                  </>
+                )}
+
                 {navItems.map((item) => {
                   const Icon = item.icon;
                   const isActive = item.path === "/" 
@@ -139,7 +232,6 @@ export default function Header() {
                         isActive ? "bg-primary/10 text-primary" : "text-foreground"
                       )}
                       onClick={() => setIsMenuOpen(false)}
-                      data-testid={`nav-mobile-${item.name.toLowerCase().replace(" ", "-")}`}
                     >
                       <Icon className="h-5 w-5" />
                       {item.name}
@@ -153,7 +245,6 @@ export default function Header() {
                   to="/emergency"
                   className="flex items-center gap-3 text-base font-medium py-3 px-4 rounded-md bg-destructive text-destructive-foreground touch-manipulation min-h-[48px]"
                   onClick={() => setIsMenuOpen(false)}
-                  data-testid="nav-mobile-emergency"
                 >
                   <AlertTriangle className="h-5 w-5" />
                   Emergency Access
@@ -161,14 +252,32 @@ export default function Header() {
                 
                 <div className="border-t my-2" />
                 
-                <Button 
-                  className="w-full gap-2 h-12 text-base touch-manipulation"
-                  onClick={connectWallet}
-                  data-testid="button-wallet-mobile"
-                >
-                  <Wallet className="h-5 w-5" />
-                  {walletAddress ? walletAddress : "Connect Wallet"}
-                </Button>
+                {isAuthenticated ? (
+                  <Button 
+                    variant="outline"
+                    className="w-full gap-2 h-12 text-base touch-manipulation"
+                    onClick={handleLogout}
+                  >
+                    <LogOut className="h-5 w-5" />
+                    Log out
+                  </Button>
+                ) : (
+                  <div className="space-y-2">
+                    <Button 
+                      className="w-full h-12 text-base touch-manipulation"
+                      onClick={() => { navigate("/login"); setIsMenuOpen(false); }}
+                    >
+                      Login
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      className="w-full h-12 text-base touch-manipulation"
+                      onClick={() => { navigate("/register"); setIsMenuOpen(false); }}
+                    >
+                      Create Account
+                    </Button>
+                  </div>
+                )}
                 
                 <div className="flex items-center gap-2 mt-4 px-4 text-sm text-muted-foreground">
                   {isOnline ? (
