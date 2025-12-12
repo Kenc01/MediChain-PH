@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -10,11 +11,16 @@ import {
   UserPlus, 
   Building2, 
   FileBadge, 
-  Settings 
+  Settings,
+  Users,
+  FileCheck,
+  Hospital,
+  TrendingUp
 } from "lucide-react";
 import heroBg from "@assets/stock_images/abstract_medical_tec_7e32e9f6.jpg";
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, useInView } from "framer-motion";
+import { useRef } from "react";
 
 export default function Home() {
   return (
@@ -63,6 +69,21 @@ export default function Home() {
                   Hospital Login
                 </Button>
               </Link>
+            </div>
+          </motion.div>
+          
+          {/* Animated Stats */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            className="mt-16 pt-12 border-t border-border/50"
+          >
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto">
+              <AnimatedStat value={50000} label="Patients Protected" suffix="+" icon={<Users className="h-5 w-5" />} />
+              <AnimatedStat value={120} label="Partner Hospitals" suffix="+" icon={<Hospital className="h-5 w-5" />} />
+              <AnimatedStat value={250000} label="Records Secured" suffix="+" icon={<FileCheck className="h-5 w-5" />} />
+              <AnimatedStat value={99.9} label="Uptime" suffix="%" decimals={1} icon={<TrendingUp className="h-5 w-5" />} />
             </div>
           </motion.div>
         </div>
@@ -268,5 +289,60 @@ function TestimonialCard({ quote, author, role }: { quote: string, author: strin
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function AnimatedStat({ 
+  value, 
+  label, 
+  suffix = "", 
+  decimals = 0,
+  icon 
+}: { 
+  value: number; 
+  label: string; 
+  suffix?: string; 
+  decimals?: number;
+  icon?: React.ReactNode;
+}) {
+  const [displayValue, setDisplayValue] = useState(0);
+  const ref = useRef<HTMLDivElement>(null);
+  const isInView = useInView(ref, { once: true, margin: "-100px" });
+
+  useEffect(() => {
+    if (!isInView) return;
+    
+    const duration = 2000;
+    const startTime = Date.now();
+    
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+      
+      setDisplayValue(value * easeOutQuart);
+      
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      }
+    };
+    
+    requestAnimationFrame(animate);
+  }, [isInView, value]);
+
+  const formattedValue = decimals > 0 
+    ? displayValue.toFixed(decimals)
+    : Math.floor(displayValue).toLocaleString();
+
+  return (
+    <div ref={ref} className="text-center">
+      <div className="flex items-center justify-center gap-2 text-primary mb-2">
+        {icon}
+      </div>
+      <div className="text-3xl md:text-4xl font-bold text-foreground">
+        {formattedValue}{suffix}
+      </div>
+      <div className="text-sm text-muted-foreground mt-1">{label}</div>
+    </div>
   );
 }

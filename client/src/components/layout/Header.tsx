@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import logo from "@assets/generated_images/minimalist_medical_blockchain_logo.png";
 import { Menu, AlertTriangle, Home, User, Stethoscope, Building2, Store, Wifi, WifiOff, LogOut, Settings, Shield } from "lucide-react";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 export default function Header() {
   const location = useLocation();
@@ -98,7 +99,7 @@ export default function Header() {
           <span className="font-bold text-lg md:text-xl tracking-tight text-primary hidden xs:inline">MediChain-PH</span>
         </Link>
 
-        <div className="hidden md:flex items-center gap-6">
+        <div className="hidden md:flex items-center gap-4">
           <NavigationMenu>
             <NavigationMenuList>
               {navItems.map((item) => (
@@ -124,6 +125,8 @@ export default function Header() {
               Emergency
             </Button>
           </Link>
+          
+          <ThemeToggle />
 
           {isLoading ? (
             <div className="h-8 w-8 rounded-full bg-muted animate-pulse" />
@@ -279,18 +282,21 @@ export default function Header() {
                   </div>
                 )}
                 
-                <div className="flex items-center gap-2 mt-4 px-4 text-sm text-muted-foreground">
-                  {isOnline ? (
-                    <>
-                      <Wifi className="h-4 w-4 text-green-500" />
-                      <span>Online</span>
-                    </>
-                  ) : (
-                    <>
-                      <WifiOff className="h-4 w-4 text-amber-500" />
-                      <span>Offline - Using cached data</span>
-                    </>
-                  )}
+                <div className="flex items-center justify-between mt-4 px-4">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    {isOnline ? (
+                      <>
+                        <Wifi className="h-4 w-4 text-green-500" />
+                        <span>Online</span>
+                      </>
+                    ) : (
+                      <>
+                        <WifiOff className="h-4 w-4 text-amber-500" />
+                        <span>Offline</span>
+                      </>
+                    )}
+                  </div>
+                  <ThemeToggle />
                 </div>
               </div>
             </SheetContent>
