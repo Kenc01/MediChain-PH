@@ -10,9 +10,10 @@ import {
   FileText, ShieldCheck, Activity, Users, 
   Upload, Search, Filter, AlertTriangle, 
   Wallet, Share2, Plus, Clock, MapPin, 
-  Coins, FileBadge, Lock, ChevronRight 
+  Coins, FileBadge, Lock, ChevronRight,
+  QrCode, Calendar, Hospital, PlusCircle
 } from "lucide-react";
-import { QrCode } from "lucide-react";
+import { motion } from "framer-motion";
 
 export default function PatientDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -47,11 +48,35 @@ export default function PatientDashboard() {
 
         {/* 1. Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
+          {/* Quick Actions */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <QuickActionButton 
+              icon={<Calendar className="h-5 w-5" />} 
+              label="Book Appointment" 
+              onClick={() => {}} 
+            />
+            <QuickActionButton 
+              icon={<Upload className="h-5 w-5" />} 
+              label="Upload Record" 
+              onClick={() => setActiveTab("records")} 
+            />
+            <QuickActionButton 
+              icon={<Share2 className="h-5 w-5" />} 
+              label="Share Access" 
+              onClick={() => setActiveTab("access")} 
+            />
+            <QuickActionButton 
+              icon={<Wallet className="h-5 w-5" />} 
+              label="My Wallet" 
+              onClick={() => setActiveTab("wallet")} 
+            />
+          </div>
+
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <StatsCard title="Total Records" value="24" icon={<FileText className="h-4 w-4 text-muted-foreground" />} description="+2 new this month" />
-            <StatsCard title="Connected Hospitals" value="3" icon={<Activity className="h-4 w-4 text-muted-foreground" />} description="Verified partners" />
-            <StatsCard title="Data Value" value="₱1,250" icon={<Coins className="h-4 w-4 text-muted-foreground" />} description="Potential earnings" />
-            <StatsCard title="Security Score" value="98%" icon={<ShieldCheck className="h-4 w-4 text-green-500" />} description="Excellent" />
+            <StatsCard title="Total Records" value="24" icon={<FileText className="h-4 w-4 text-muted-foreground" />} description="+2 new this month" index={0} />
+            <StatsCard title="Connected Hospitals" value="3" icon={<Activity className="h-4 w-4 text-muted-foreground" />} description="Verified partners" index={1} />
+            <StatsCard title="Data Value" value="₱1,250" icon={<Coins className="h-4 w-4 text-muted-foreground" />} description="Potential earnings" index={2} />
+            <StatsCard title="Security Score" value="98%" icon={<ShieldCheck className="h-4 w-4 text-green-500" />} description="Excellent" index={3} />
           </div>
 
           <div className="grid gap-6 md:grid-cols-2">
@@ -365,18 +390,45 @@ export default function PatientDashboard() {
   );
 }
 
-function StatsCard({ title, value, icon, description }: { title: string, value: string, icon: React.ReactNode, description: string }) {
+function StatsCard({ title, value, icon, description, index = 0 }: { title: string, value: string, icon: React.ReactNode, description: string, index?: number }) {
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        {icon}
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
-        <p className="text-xs text-muted-foreground">{description}</p>
-      </CardContent>
-    </Card>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, delay: index * 0.1 }}
+    >
+      <Card className="hover:-translate-y-1 transition-transform duration-200">
+        <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">{title}</CardTitle>
+          {icon}
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{value}</div>
+          <p className="text-xs text-muted-foreground">{description}</p>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
+
+function QuickActionButton({ icon, label, onClick }: { icon: React.ReactNode, label: string, onClick: () => void }) {
+  return (
+    <motion.div
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+    >
+      <Button 
+        variant="outline" 
+        className="w-full h-auto py-4 flex flex-col gap-2 items-center justify-center"
+        onClick={onClick}
+        data-testid={`button-quick-action-${label.toLowerCase().replace(/\s+/g, '-')}`}
+      >
+        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+          {icon}
+        </div>
+        <span className="text-xs font-medium">{label}</span>
+      </Button>
+    </motion.div>
   );
 }
 
